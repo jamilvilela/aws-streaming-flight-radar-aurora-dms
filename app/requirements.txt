@@ -1,0 +1,7 @@
+# pip install -r ../requirements.txt -t python
+#  pip install -e ../opensky-api/python
+boto3
+python-dotenv
+requests
+pydantic
+psycopg2-binary
