@@ -38,12 +38,18 @@ variable "dms_config" {
   default = {}
 }
 
+variable "vpc_name" {
+  description = "Name tag of the VPC to use (used when aurora_config.vpc_id is null)"
+  type        = string
+  default     = null
+}
+
 variable "aurora_config" {
   description = "Configuration for the Aurora Serverless v2 PostgreSQL cluster"
   type = object({
-    vpc_id                  = string
-    subnet_ids              = list(string)
-    allowed_cidr_blocks     = list(string)
+    vpc_id                  = optional(string, null)
+    subnet_ids              = optional(list(string), null)
+    allowed_cidr_blocks     = optional(list(string), ["0.0.0.0/0"])
     db_name                 = optional(string, "flightradar")
     admin_username          = optional(string, "dbadmin")
     admin_password          = string

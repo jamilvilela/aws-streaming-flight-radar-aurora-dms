@@ -10,7 +10,7 @@ resource "aws_iam_role" "dms_s3" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "dms.amazonaws.com"
+          Service = "dms.${var.region}.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }
@@ -75,7 +75,7 @@ resource "aws_iam_role" "dms_vpc_default" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "dms.amazonaws.com"
+          Service = "dms.${var.region}.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }

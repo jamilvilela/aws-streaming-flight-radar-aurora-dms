@@ -4,8 +4,8 @@ module "aurora_postgres" {
   project_name = var.project_name
   environment  = var.environment
 
-  vpc_id              = var.aurora_config.vpc_id
-  subnet_ids          = var.aurora_config.subnet_ids
+  vpc_id              = local.effective_vpc_id
+  subnet_ids          = local.effective_subnet_ids
   allowed_cidr_blocks = var.aurora_config.allowed_cidr_blocks
   db_name             = var.aurora_config.db_name
   admin_username      = var.aurora_config.admin_username
@@ -34,8 +34,8 @@ module "dms_serverless" {
   environment  = var.environment
   region       = var.aws_region
 
-  vpc_id                  = var.aurora_config.vpc_id
-  subnet_ids              = var.aurora_config.subnet_ids
+  vpc_id                  = local.effective_vpc_id
+  subnet_ids              = local.effective_subnet_ids
   aurora_security_group_id = module.aurora_postgres.security_group_id
 
   aurora_endpoint = module.aurora_postgres.db_endpoint

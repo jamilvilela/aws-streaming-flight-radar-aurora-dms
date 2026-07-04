@@ -96,7 +96,7 @@ resource "aws_security_group" "aurora" {
 resource "aws_rds_cluster" "this" {
   cluster_identifier  = "${var.project_name}-aurora"
   engine              = "aurora-postgresql"
-  engine_version      = "16.6"
+  engine_version      = "17.7"
   engine_mode         = "provisioned"
 
   database_name       = var.db_name
