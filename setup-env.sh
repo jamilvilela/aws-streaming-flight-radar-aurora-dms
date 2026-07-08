@@ -71,6 +71,7 @@ fi
 
 if [ -n "$RDS_ADMIN_PASSWORD" ]; then
   export TF_VAR_rds_admin_password="$RDS_ADMIN_PASSWORD"
+  export TF_VAR_rds_admin_username="$RDS_ADMIN_USERNAME"
   ok "RDS_ADMIN_PASSWORD carregada do .env (sobrescreve tfvars)"
 fi
 
