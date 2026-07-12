@@ -202,7 +202,7 @@ cells:
           r.equipment
       FROM flight_radar.routes r
       JOIN flight_radar.airlines al ON al.id = r.airline_id
-      --WHERE r.src_airport = 'GRU' AND r.dst_airport = 'JFK'
+      WHERE r.src_airport = 'GRU' AND r.dst_airport = 'JFK'
       ORDER BY r.duration_minutes;
     metadata: {}
   - kind: 2
@@ -323,7 +323,7 @@ cells:
       FROM flight_radar.flights f
       JOIN flight_radar.airports org ON org.icao_code = f.origin_airport
       JOIN flight_radar.airports dst ON dst.icao_code = f.destination_airport
-      WHERE f.aircraft_icao24 = 'a0f1b2'
+      WHERE f.aircraft_icao24 = '00fde9'
       ORDER BY f.scheduled_departure DESC
       LIMIT 50;
     metadata: {}
@@ -345,8 +345,8 @@ cells:
       JOIN flight_radar.airlines al ON al.icao_code = f.airline_icao
       JOIN flight_radar.airports org ON org.icao_code = f.origin_airport
       JOIN flight_radar.airports dst ON dst.icao_code = f.destination_airport
-      WHERE f.scheduled_departure >= '2026-06-01'
-        AND f.scheduled_departure <  '2026-07-01'
+      WHERE f.scheduled_departure >= '2020-06-01'
+        AND f.scheduled_departure <  '2020-07-01'
       ORDER BY f.scheduled_departure
       LIMIT 200;
     metadata: {}
@@ -366,21 +366,33 @@ cells:
     metadata: {}
   - kind: 2
     languageId: sql
-    value: |-
-      -- 4.2  Trajetória completa de um voo específico
-      --    Altere o flight_id conforme necessário.
-      SELECT
-          recorded_at,
-          latitude,
-          longitude,
-          altitude_ft,
-          velocity_kts,
-          heading,
-          vertical_rate_fpm,
-          on_ground
-      FROM flight_radar.aircraft_positions
-      WHERE flight_id = 12345
-      ORDER BY recorded_at;
+    value: "-- 4.2  Trajetória completa de um voo específico\r
+
+      --    Altere o flight_id conforme necessário.\r
+
+      SELECT\r
+
+      \    recorded_at,\r
+
+      \    latitude,\r
+
+      \    longitude,\r
+
+      \    altitude_ft,\r
+
+      \    velocity_kts,\r
+
+      \    heading,\r
+
+      \    vertical_rate_fpm,\r
+
+      \    on_ground\r
+
+      FROM flight_radar.aircraft_positions\r
+
+      WHERE flight_id = 19868\r
+
+      ORDER BY recorded_at;"
     metadata: {}
   - kind: 2
     languageId: sql
@@ -395,7 +407,7 @@ cells:
           heading,
           on_ground
       FROM flight_radar.aircraft_positions
-      WHERE aircraft_icao24 = 'a0f1b2'
+      WHERE aircraft_icao24 = '00fde9'
       ORDER BY recorded_at DESC
       LIMIT 100;
     metadata: {}
@@ -502,6 +514,7 @@ cells:
       FROM flight_radar.flights f
       JOIN flight_radar.airports org ON org.icao_code = f.origin_airport
       JOIN flight_radar.airports dst ON dst.icao_code = f.destination_airport
+      where org.iata_code IS NOT NULL AND dst.iata_code IS NOT NULL
       GROUP BY org.iata_code, dst.iata_code
       ORDER BY total_voos DESC
       LIMIT 20;
@@ -536,7 +549,7 @@ cells:
 
       GROUP BY al.name
 
-      HAVING COUNT(*) > 100
+      HAVING COUNT(*) > 1
 
       ORDER BY perc_cancelamento DESC
 
@@ -560,7 +573,7 @@ cells:
         AND f.status = 'landed'
       GROUP BY al.name
 
-      HAVING COUNT(*) > 50
+      HAVING COUNT(*) > 1
 
       ORDER BY atraso_medio_chegada_min DESC
 
@@ -660,32 +673,16 @@ cells:
   - kind: 2
     languageId: sql
     value: |-
-      -- 6.4  Operações CDC registradas (INSERT/UPDATE/DELETE)
-      SELECT
-          dms_operation,
-          COUNT(*)                                  AS qtd,
-          MIN(dms_timestamp)                        AS primeiro,
-          MAX(dms_timestamp)                        AS ultimo
-      FROM flight_radar.aircraft_positions
-      WHERE dms_operation IS NOT NULL
-      GROUP BY dms_operation
-      ORDER BY dms_operation;
-    metadata: {}
-  - kind: 2
-    languageId: sql
-    value: |-
-      -- 6.5  Últimas linhas replicadas pelo DMS (CDC)
+      -- 6.4  Últimas posições inseridas
       SELECT
           position_id,
           aircraft_icao24,
           flight_id,
           latitude,
           longitude,
-          dms_operation,
-          dms_timestamp
+          recorded_at
       FROM flight_radar.aircraft_positions
-      WHERE dms_operation IS NOT NULL
-      ORDER BY dms_timestamp DESC
+      ORDER BY position_id DESC
       LIMIT 50;
     metadata: {}
   - kind: 2

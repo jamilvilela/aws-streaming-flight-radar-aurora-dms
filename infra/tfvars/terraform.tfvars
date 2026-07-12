@@ -41,8 +41,8 @@ aurora_config = {
   # Aumentado para suportar 5GB de full load + 150MB/5min de streaming CDC
   # min 2 ACU para operação estável com pglogical e WAL pesado
   # max 32 ACU para picos de full load e alto throughput de CDC
-  serverless_min_capacity = 2.0
-  serverless_max_capacity = 16
+  serverless_min_capacity = 0.0
+  serverless_max_capacity = 4
 
   backup_retention_days = 7
   publicly_accessible   = true

@@ -265,9 +265,6 @@ CREATE TABLE IF NOT EXISTS flight_radar.aircraft_positions (
     on_ground       BOOLEAN NOT NULL DEFAULT FALSE,
     recorded_at     TIMESTAMPTZ NOT NULL,
     ingested_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    -- Metadados DMS
-    dms_operation   CHAR(1),
-    dms_timestamp   TIMESTAMPTZ,
     PRIMARY KEY (position_id, recorded_at)
 ) PARTITION BY RANGE (recorded_at);
 
@@ -312,8 +309,6 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_positions_aircraft   ON flight_radar.aircraft_positions(aircraft_icao24);
 CREATE INDEX IF NOT EXISTS idx_positions_recorded   ON flight_radar.aircraft_positions(recorded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_positions_flight     ON flight_radar.aircraft_positions(flight_id);
-CREATE INDEX IF NOT EXISTS idx_positions_dms_op     ON flight_radar.aircraft_positions(dms_operation)
-    WHERE dms_operation IS NOT NULL;
 
 -- =============================================================================
 -- VIEW AUXILIAR: visão consolidada de voo + posição mais recente
