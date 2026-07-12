@@ -327,7 +327,7 @@ BEGIN
     SELECT
         relname::TEXT,
         n_live_tup::BIGINT,
-        ROUND(pg_total_relation_size(oid) / 1048576.0, 2),
+        ROUND(pg_total_relation_size(relid) / 1048576.0, 2),
         CASE
             WHEN relname = 'aircraft_positions'
             THEN pos_partitions
@@ -349,19 +349,23 @@ CREATE EXTENSION IF NOT EXISTS pglogical;
 -- Garante que o dbadmin tenha privilégio rds_replication
 GRANT rds_replication TO dbadmin;
 
--- Ajusta WAL para alto throughput de CDC (150MB/5min)
-ALTER SYSTEM SET wal_level = logical;
-ALTER SYSTEM SET max_replication_slots = 20;
-ALTER SYSTEM SET max_wal_senders = 20;
-ALTER SYSTEM SET max_logical_replication_workers = 12;
-ALTER SYSTEM SET max_worker_processes = 30;
-
--- Aumenta o WAL buffer para suportar alto volume de CDC
-ALTER SYSTEM SET wal_buffers = '64MB';
-ALTER SYSTEM SET wal_writer_delay = '200ms';
-ALTER SYSTEM SET wal_writer_flush_after = '1MB';
-
-SELECT pg_reload_conf();
+--
+-- Parâmetros WAL e replicação lógica são configurados via
+-- cluster parameter group no Terraform (aurora_postgres/main.tf):
+--
+--   rds.logical_replication          = 1        (habilita wal_level = logical)
+--   max_replication_slots            = 20
+--   max_wal_senders                  = 20
+--   max_logical_replication_workers  = 12
+--   max_worker_processes             = 30
+--   wal_buffers                      = 65536   (64MB em blocos de 8KB)
+--
+-- Após alterar o parameter group, é necessário REBOOT do cluster.
+-- Use AWS Console ou CLI:
+--   aws rds reboot-db-cluster --db-cluster-identifier <cluster_id>
+--
+-- Comandos ALTER SYSTEM não funcionam no RDS (exigem superuser).
+--
 
 -- =============================================================================
 -- NOTAS DE USO:
