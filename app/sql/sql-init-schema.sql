@@ -23,6 +23,27 @@
 CREATE SCHEMA IF NOT EXISTS flight_radar;
 SET search_path TO flight_radar;
 
+-- =============================================================================
+-- Funções auxiliares
+-- =============================================================================
+
+-- Haversine: distância em km entre dois pontos na superfície da Terra
+CREATE OR REPLACE FUNCTION flight_radar.haversine_km(
+    lat1 NUMERIC, lon1 NUMERIC,
+    lat2 NUMERIC, lon2 NUMERIC
+) RETURNS NUMERIC
+    LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
+AS $$
+DECLARE
+    dlat NUMERIC := RADIANS(lat2 - lat1);
+    dlon NUMERIC := RADIANS(lon2 - lon1);
+    a    NUMERIC := SIN(dlat / 2)^2 + COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * SIN(dlon / 2)^2;
+    c    NUMERIC := 2 * ASIN(SQRT(a));
+BEGIN
+    RETURN 6371.0 * c;  -- raio médio da Terra em km
+END;
+$$;
+
 -- #############################################################################
 -- TABELAS DE REFERÊNCIA (carregadas dos CSVs)
 -- #############################################################################
@@ -157,6 +178,11 @@ CREATE TABLE IF NOT EXISTS flight_radar.routes (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Unique index natural: mesma companhia + mesma origem/destino + mesmas escalas = mesma rota
+-- COALESCE trata NULLs corretamente (PostgreSQL trata NULLs como diferentes em unique index)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_routes_natural
+    ON flight_radar.routes(COALESCE(airline_id,0), COALESCE(src_airport_id,0), COALESCE(dst_airport_id,0), stops);
+
 CREATE INDEX IF NOT EXISTS idx_routes_src     ON flight_radar.routes(src_airport_id);
 CREATE INDEX IF NOT EXISTS idx_routes_dst     ON flight_radar.routes(dst_airport_id);
 CREATE INDEX IF NOT EXISTS idx_routes_airline ON flight_radar.routes(airline_id);
@@ -207,6 +233,11 @@ CREATE TABLE IF NOT EXISTS flight_radar.flights (
     )
 );
 
+-- Unique index natural para permitir ON CONFLICT (idempotência)
+-- flight_number + airline + aircraft + scheduled_departure identifica um voo único
+CREATE UNIQUE INDEX IF NOT EXISTS uq_flights_natural
+    ON flight_radar.flights(flight_number, airline_icao, aircraft_icao24, scheduled_departure);
+
 CREATE INDEX IF NOT EXISTS idx_flights_status        ON flight_radar.flights(status);
 CREATE INDEX IF NOT EXISTS idx_flights_aircraft      ON flight_radar.flights(aircraft_icao24);
 CREATE INDEX IF NOT EXISTS idx_flights_airline       ON flight_radar.flights(airline_icao);
@@ -239,6 +270,10 @@ CREATE TABLE IF NOT EXISTS flight_radar.aircraft_positions (
     dms_timestamp   TIMESTAMPTZ,
     PRIMARY KEY (position_id, recorded_at)
 ) PARTITION BY RANGE (recorded_at);
+
+-- Unique index para evitar duplicação de posições no mesmo instante
+CREATE UNIQUE INDEX IF NOT EXISTS uq_aircraft_positions_instant
+    ON flight_radar.aircraft_positions(flight_id, recorded_at);
 
 -- =============================================================================
 -- Criação das partições mensais para aircraft_positions

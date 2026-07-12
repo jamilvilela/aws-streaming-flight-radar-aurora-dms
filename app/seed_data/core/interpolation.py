@@ -123,6 +123,12 @@ def generate_positions_for_flight(
     if dep_time >= arr_time:
         return []
 
+    # Garante float para evitar erro Decimal * float
+    lat1 = float(lat1)
+    lon1 = float(lon1)
+    lat2 = float(lat2)
+    lon2 = float(lon2)
+
     total_seconds = (arr_time - dep_time).total_seconds()
     steps = max(2, int(total_seconds / interval_seconds))
     positions: list[PositionRow] = []

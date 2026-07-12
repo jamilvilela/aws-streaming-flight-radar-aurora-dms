@@ -58,15 +58,22 @@ def build_parser() -> argparse.ArgumentParser:
     # load-reference
     lr = sub.add_parser("load-reference", help="Carrega dados de referência dos CSVs")
     lr.add_argument(
-        "--airports-only", action="store_true",
-        help="Carrega apenas aeroportos (mais rápido para testes)",
+        "--tables", type=str, nargs="*",
+        choices=["countries", "aircraft_types", "airports", "airlines", "routes"],
+        default=None,
+        help="Tabelas a popular (ex: --tables airports airlines). "
+             "Omite para carregar todas.",
     )
 
     # historical
     h = sub.add_parser("historical", help="Gera massa de dados históricos (full load)")
     h.add_argument(
         "--years", type=int, default=5,
-        help="Quantidade de anos (default: 5)",
+        help="Quantidade de anos (default: 5, ignorado se --years-list for usado)",
+    )
+    h.add_argument(
+        "--years-list", type=int, nargs="*", default=None,
+        help="Anos específicos (ex: --years-list 2022 2024). Sobrescreve --years.",
     )
     h.add_argument(
         "--target-size-gb", type=float, default=5.0,
@@ -103,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     # all
     a = sub.add_parser("all", help="Referência + histórico + stream em sequência")
     a.add_argument("--years", type=int, default=5)
+    a.add_argument("--years-list", type=int, nargs="*", default=None)
     a.add_argument("--target-size-gb", type=float, default=5.0)
     a.add_argument("--interval", type=int, default=1)
     a.add_argument("--target-mb-5min", type=float, default=150.0)
@@ -113,29 +121,40 @@ def build_parser() -> argparse.ArgumentParser:
 
 def cmd_load_reference(args: argparse.Namespace, cfg: DBConfig) -> None:
     """Carrega dados de referência dos CSVs para o banco."""
+    tables = args.tables  # None = todas, ou lista ex: ["airports", "airlines"]
+
     logger.info("=" * 60)
     logger.info("CARREGANDO DADOS DE REFERÊNCIA")
+    if tables:
+        logger.info("Tabelas selecionadas: %s", ", ".join(tables))
+    else:
+        logger.info("Todas as tabelas")
     logger.info("=" * 60)
 
     data = load_all_reference_data(cfg)
     repo = DatabaseRepository(cfg)
     repo.connect()
 
-    # Ordem correta: countries → airports → airlines → routes
-    logger.info("Inserindo %d países...", len(data["countries"]))
-    repo.insert_countries([r.model_dump() for r in data["countries"]])
+    # Ordem correta: countries → aircraft_types → airports → airlines → routes
+    if tables is None or "countries" in tables:
+        logger.info("Inserindo %d países...", len(data["countries"]))
+        repo.insert_countries([r.model_dump() for r in data["countries"]])
 
-    logger.info("Inserindo %d tipos de aeronave...", len(data["aircraft_types"]))
-    repo.insert_aircraft_types([r.model_dump() for r in data["aircraft_types"]])
+    if tables is None or "aircraft_types" in tables:
+        logger.info("Inserindo %d tipos de aeronave...", len(data["aircraft_types"]))
+        repo.insert_aircraft_types([r.model_dump() for r in data["aircraft_types"]])
 
-    logger.info("Inserindo %d aeroportos...", len(data["airports"]))
-    repo.insert_airports([r.model_dump() for r in data["airports"]])
+    if tables is None or "airports" in tables:
+        logger.info("Inserindo %d aeroportos...", len(data["airports"]))
+        repo.insert_airports([r.model_dump() for r in data["airports"]])
 
-    logger.info("Inserindo %d companhias...", len(data["airlines"]))
-    repo.insert_airlines([r.model_dump() for r in data["airlines"]])
+    if tables is None or "airlines" in tables:
+        logger.info("Inserindo %d companhias...", len(data["airlines"]))
+        repo.insert_airlines([r.model_dump() for r in data["airlines"]])
 
-    logger.info("Inserindo %d rotas...", len(data["routes"]))
-    repo.insert_routes([r.model_dump() for r in data["routes"]])
+    if tables is None or "routes" in tables:
+        logger.info("Inserindo %d rotas...", len(data["routes"]))
+        repo.insert_routes([r.model_dump() for r in data["routes"]])
 
     # Calcula durações das rotas (precisa da função haversine no banco)
     try:
@@ -156,6 +175,7 @@ def cmd_historical(args: argparse.Namespace, cfg: DBConfig) -> None:
         target_size_gb=args.target_size_gb,
         flights_per_year=args.flights_per_year,
         batch_size=args.batch_size,
+        years_list=args.years_list,
     )
 
 

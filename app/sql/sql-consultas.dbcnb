@@ -202,7 +202,7 @@ cells:
           r.equipment
       FROM flight_radar.routes r
       JOIN flight_radar.airlines al ON al.id = r.airline_id
-      WHERE r.src_airport = 'GRU' AND r.dst_airport = 'JFK'
+      --WHERE r.src_airport = 'GRU' AND r.dst_airport = 'JFK'
       ORDER BY r.duration_minutes;
     metadata: {}
   - kind: 2
@@ -780,6 +780,51 @@ cells:
       -- 7.5  Tamanho do banco
       SELECT
           pg_size_pretty(pg_database_size(current_database())) AS tamanho_total;
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: "CREATE UNIQUE INDEX IF NOT EXISTS uq_flights_natural\r
+
+      \    ON flight_radar.flights(flight_number, airline_icao, aircraft_icao24,
+      scheduled_departure);\r
+
+      \r
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_aircraft_positions_instant\r
+
+      \    ON flight_radar.aircraft_positions(flight_id, recorded_at);\r
+
+      \r
+
+      -- COALESCE trata NULLs corretamente (PostgreSQL trata NULLs como
+      diferentes em unique index)\r
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_routes_natural\r
+
+      \    ON flight_radar.routes(COALESCE(airline_id,0),
+      COALESCE(src_airport_id,0), COALESCE(dst_airport_id,0), stops);"
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: |-
+      -- =============================================================================
+      -- Criar função haversine_km (necessária para calcular duração das rotas)
+      -- =============================================================================
+      CREATE OR REPLACE FUNCTION flight_radar.haversine_km(
+          lat1 NUMERIC, lon1 NUMERIC,
+          lat2 NUMERIC, lon2 NUMERIC
+      ) RETURNS NUMERIC
+          LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
+      AS $$
+      DECLARE
+          dlat NUMERIC := RADIANS(lat2 - lat1);
+          dlon NUMERIC := RADIANS(lon2 - lon1);
+          a    NUMERIC := SIN(dlat / 2)^2 + COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * SIN(dlon / 2)^2;
+          c    NUMERIC := 2 * ASIN(SQRT(a));
+      BEGIN
+          RETURN 6371.0 * c;
+      END;
+      $$;
     metadata: {}
 metadata:
   conn:

@@ -39,19 +39,30 @@ class HistoricalGenerator(BaseGenerator):
         flights_per_year: int | None = None,
         batch_size: int = 500,
         workers: int = 1,
+        years_list: list[int] | None = None,
     ) -> None:
         """
         Gera dados históricos.
 
         Args:
-            years: Número de anos (default: 5)
+            years: Número de anos (default: 5, ignorado se years_list for fornecido)
             target_size_gb: Tamanho alvo em GB (default: 5.0)
             flights_per_year: Forçar número de voos/ano (calculado se None)
             batch_size: Voos entre commits (default: 500)
             workers: Workers paralelos (default: 1, futuro)
+            years_list: Lista de anos específicos (ex: [2022, 2024]).
+                        Quando fornecido, sobrescreve 'years'.
         """
-        logger.info("=" * 60)
-        logger.info("GERAÇÃO HISTÓRICA — %d anos, alvo ~%.1f GB", years, target_size_gb)
+        if years_list:
+            years = len(years_list)
+            logger.info("=" * 60)
+            logger.info(
+                "GERAÇÃO HISTÓRICA — anos %s, alvo ~%.1f GB",
+                years_list, target_size_gb,
+            )
+        else:
+            logger.info("=" * 60)
+            logger.info("GERAÇÃO HISTÓRICA — %d anos, alvo ~%.1f GB", years, target_size_gb)
         logger.info("=" * 60)
 
         self.setup()
@@ -62,7 +73,7 @@ class HistoricalGenerator(BaseGenerator):
         # Média de posições por voo (considerando vários tamanhos de rota)
         avg_positions_per_flight = 80
         total_flights_needed = target_positions // avg_positions_per_flight
-        flights_per_year_calc = total_flights_needed // years
+        flights_per_year_calc = total_flights_needed // max(years, 1)
 
         fpy = flights_per_year or max(100, flights_per_year_calc)
         total_flights = fpy * years
@@ -82,23 +93,30 @@ class HistoricalGenerator(BaseGenerator):
             count=max(500, int(fpy * years / 200))
         )
 
+        # Define os anos a processar
+        if years_list:
+            year_starts = [datetime(y, 1, 1, tzinfo=timezone.utc) for y in years_list]
+        else:
+            year_starts = [
+                now - timedelta(days=365 * (years - i))
+                for i in range(years)
+            ]
+
         # Distribui voos pelos anos
-        for year_offset in range(years):
-            year_start = now - timedelta(days=365 * (years - year_offset))
+        for idx, year_start in enumerate(year_starts):
+            year_num = year_start.year
             year_flights = random.randint(
                 max(100, fpy - 200),
                 fpy + 200,
             )
 
             logger.info(
-                "Ano %d/%d: %s — gerando ~%d voos",
-                year_offset + 1, years,
-                year_start.strftime("%Y"),
-                year_flights,
+                "Ano %d/%d: %d — gerando ~%d voos",
+                idx + 1, years, year_num, year_flights,
             )
 
             flights_created, positions_created = self._generate_year(
-                year_start, year_flights, batch_size,
+                year_start, year_flights,
             )
             total_flights_created += flights_created
             total_positions_created += positions_created
@@ -108,7 +126,7 @@ class HistoricalGenerator(BaseGenerator):
             logger.info(
                 "  Ano %d concluído: +%d voos, +%d posições  "
                 "(acumulado: %d voos, %d posições, %.0f pos/s, %.1f min decorridos)",
-                year_offset + 1,
+                idx + 1,
                 flights_created, positions_created,
                 total_flights_created, total_positions_created,
                 rate, elapsed / 60,
@@ -132,11 +150,19 @@ class HistoricalGenerator(BaseGenerator):
     def _generate_aircraft_pool(self, count: int) -> None:
         """Gera frota de aeronaves para usar nos voos."""
         logger.info("Gerando pool de %d aeronaves...", count)
-        aircraft_types = [
-            "B738", "A320", "A333", "B77W", "B789",
-            "E190", "E195", "A359", "B748", "A321",
-            "B739", "B763", "A388", "E175", "A332",
-        ]
+
+        # Busca tipos de aeronave válidos do banco (carregados pelo load-reference)
+        aircraft_types = self.repo.get_aircraft_type_codes()
+        if not aircraft_types:
+            # Fallback: lista genérica caso a tabela esteja vazia
+            logger.warning(
+                "Tabela aircraft_types vazia — usando lista hardcoded de fallback"
+            )
+            aircraft_types = [
+                "B738", "A320", "A333", "B77W", "B789",
+                "E190", "E195", "A359", "B748", "A321",
+                "B739", "B763", "A388", "E175", "A332",
+            ]
         prefixes = {
             "US": "N", "GB": "G-", "DE": "D-", "FR": "F-",
             "BR": "PT-", "NL": "PH-", "AE": "A6-", "JP": "JA",
@@ -197,75 +223,67 @@ class HistoricalGenerator(BaseGenerator):
         logger.info("Pool de aeronaves: %d disponíveis", len(self._aircraft_icaos))
 
     def _generate_year(
-        self, year_start: datetime, num_flights: int, batch_size: int
+        self, year_start: datetime, num_flights: int
     ) -> tuple[int, int]:
-        """Gera um ano de voos usando COPY para posições (mais rápido)."""
-        flights_created = 0
+        """Gera um ano de voos — tudo em memória, depois 2 operações de batch."""
+        # Cria todas as 12 partições do ano antes de começar
+        self.repo.ensure_partitions_for_year(year_start.year)
+        logger.info("Partições de %d verificadas/criadas", year_start.year)
+
+        # 1. Consulta o maior flight_id atual para usar contador local
+        next_id = self.repo.get_max_flight_id() + 1
+
+        # 2. Gera TUDO em memória (zero round trips)
+        flight_rows: list[dict] = []
+        position_buffer: list = []
+
+        for i in range(num_flights):
+            days_offset = random.uniform(0, 365)
+            ref_time = year_start + timedelta(days=days_offset)
+
+            flight_row = self._random_flight_row(ref_time)
+            flight_row["flight_id"] = next_id
+            next_id += 1
+            flight_rows.append(flight_row)
+
+            # Gera posições para landed/active/scheduled
+            if flight_row["status"] in ("landed", "active", "scheduled"):
+                dep = flight_row["actual_departure"] or flight_row["scheduled_departure"]
+                arr = flight_row["actual_arrival"] or flight_row["scheduled_arrival"]
+                if dep and arr:
+                    orig_data = self._airport_map.get(flight_row["origin_airport"])
+                    dest_data = self._airport_map.get(flight_row["destination_airport"])
+                    if orig_data and dest_data and orig_data["lat"] and dest_data["lat"]:
+                        interval_min = random.randint(1, 5)
+                        pos_list = generate_positions_for_flight(
+                            flight_id=flight_row["flight_id"],
+                            icao24=flight_row["aircraft_icao24"],
+                            lat1=orig_data["lat"],
+                            lon1=orig_data["lon"],
+                            lat2=dest_data["lat"],
+                            lon2=dest_data["lon"],
+                            dep_time=dep,
+                            arr_time=arr,
+                            interval_seconds=interval_min * 60,
+                            jitter=0.3,
+                        )
+                        position_buffer.extend(pos_list)
+
+        # 3. Batch INSERT de voos (1 round trip, com ON CONFLICT)
+        self.repo.insert_flights_batch(flight_rows)
+        flights_created = len(flight_rows)
+
+        # 4. COPY de posições em chunks (para não estourar memória do lado do DB)
         positions_created = 0
-        position_buffer: list = []  # Buffer de PositionRow para COPY
-        COPY_FLUSH_THRESHOLD = 5000  # Flush a cada 5k posições
-
-        def flush_positions():
-            nonlocal positions_created
-            if position_buffer:
-                positions_created += self.repo.insert_positions_copy(position_buffer)
-                position_buffer.clear()
-
-        with self.repo.transaction() as cur:
-            for i in range(num_flights):
-                # Distribui voo ao longo do ano
-                days_offset = random.uniform(0, 365)
-                ref_time = year_start + timedelta(days=days_offset)
-
-                flight_row = self._random_flight_row(ref_time)
-                flight_id = self.repo.insert_flight(cur, flight_row)
-                flights_created += 1
-
-                # Gera posições para landed/active/scheduled
-                if flight_row["status"] in ("landed", "active", "scheduled"):
-                    dep = flight_row["actual_departure"] or flight_row["scheduled_departure"]
-                    arr = flight_row["actual_arrival"] or flight_row["scheduled_arrival"]
-                    if dep and arr:
-                        orig_data = self._airport_map.get(flight_row["origin_airport"])
-                        dest_data = self._airport_map.get(flight_row["destination_airport"])
-                        if orig_data and dest_data and orig_data["lat"] and dest_data["lat"]:
-                            interval_min = random.randint(1, 5)
-                            pos_list = generate_positions_for_flight(
-                                flight_id=flight_id,
-                                icao24=flight_row["aircraft_icao24"],
-                                lat1=orig_data["lat"],
-                                lon1=orig_data["lon"],
-                                lat2=dest_data["lat"],
-                                lon2=dest_data["lon"],
-                                dep_time=dep,
-                                arr_time=arr,
-                                interval_seconds=interval_min * 60,
-                                jitter=0.3,
-                            )
-                            # Acumula no buffer em vez de inserir direto
-                            position_buffer.extend(pos_list)
-
-                            # Flush periódico do buffer via COPY (fora da transação)
-                            if len(position_buffer) >= COPY_FLUSH_THRESHOLD:
-                                cur.connection.commit()  # Commit voos pendentes
-                                flush_positions()
-                                # Nova transação para próximos voos
-                                cur.execute("SET search_path TO flight_radar;")
-
-                # Commit periódico dos voos (a cada batch_size)
-                if i > 0 and i % batch_size == 0:
-                    cur.connection.commit()
-                    flush_positions()  # Também flush posições acumuladas
-                    logger.debug(
-                        "  ... %d/%d voos (%d posições, %.1f MB acum)",
-                        i, num_flights, positions_created,
-                        positions_created * BYTES_PER_POSITION / 1_000_000,
-                    )
-                    # Reabre transação
-                    cur.execute("SET search_path TO flight_radar;")
-
-        # Flush final de posições restantes
-        flush_positions()
+        CHUNK = 10000
+        for start in range(0, len(position_buffer), CHUNK):
+            chunk = position_buffer[start:start + CHUNK]
+            positions_created += self.repo.insert_positions_copy(chunk)
+            logger.debug(
+                "  Posições: %d/%d (%.1f%%)",
+                positions_created, len(position_buffer),
+                100.0 * positions_created / len(position_buffer),
+            )
 
         return flights_created, positions_created
 
