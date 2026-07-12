@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------------
 resource "aws_rds_cluster_parameter_group" "this" {
   name        = "${var.project_name}-aurora-pg"
-  family      = "aurora-postgresql16"
+  family      = "aurora-postgresql17"
   description = "Cluster parameter group for ${var.project_name} Aurora Serverless v2"
 
   parameter {
@@ -40,6 +40,36 @@ resource "aws_rds_cluster_parameter_group" "this" {
   parameter {
     name         = "logical_decoding_work_mem"
     value        = "65536"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "max_worker_processes"
+    value        = "30"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "max_logical_replication_workers"
+    value        = "12"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "max_replication_slots"
+    value        = "20"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "max_wal_senders"
+    value        = "20"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "wal_buffers"
+    value        = "65536"                    # 64MB in 8KB blocks
     apply_method = "pending-reboot"
   }
 
@@ -175,8 +205,16 @@ resource "aws_rds_cluster_instance" "reader" {
 
 # ---------------------------------------------------------------------------
 # CloudWatch Log Group — PostgreSQL logs
+# O RDS cria automaticamente este log group ao habilitar cloudwatch_logs_exports.
+# Usamos data source para referenciar o existente, evitando erro "already exists".
 # ---------------------------------------------------------------------------
+data "aws_cloudwatch_log_group" "postgres" {
+  name = "/aws/rds/cluster/${var.project_name}-aurora/postgresql"
+}
+
+# Resource opcional — só cria se não existir (ex: primeira execução sem RDS)
 resource "aws_cloudwatch_log_group" "postgres" {
+  count             = var.create_log_group ? 1 : 0
   name              = "/aws/rds/cluster/${var.project_name}-aurora/postgresql"
   retention_in_days = var.log_retention_days
   tags              = var.tags

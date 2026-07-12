@@ -1,6 +1,9 @@
 # Local .terraform directories
 .terraform/
 
+# Terraform lock file
+infra/.terraform.lock.hcl
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
@@ -25,12 +28,14 @@ override.tf.json
 
 # Ignore transient lock info files created by terraform apply
 .terraform.tfstate.lock.info
+.terraform.tfstate.backup
 
 # Include override files you do wish to add to version control using negated pattern
 # !example_override.tf
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
-# example: *tfplan*
+*tfplan*
+*tfplan.json
 
 # Ignore CLI configuration files
 .terraformrc
@@ -46,3 +51,5 @@ terraform.rc
 __pycache__/
 *.py[cod]
 *$py.class
+
+.env

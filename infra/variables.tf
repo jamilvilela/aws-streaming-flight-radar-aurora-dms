@@ -8,6 +8,12 @@ variable "tags" {
 }
 
 # Optional override variables (can be set via .env → TF_VAR_*)
+variable "rds_admin_username" {
+  description = "Override Aurora admin username (from .env RDS_ADMIN_USERNAME)"
+  type        = string
+  default     = null
+}
+
 variable "rds_admin_password" {
   description = "Override Aurora admin password (from .env RDS_ADMIN_PASSWORD)"
   type        = string
@@ -30,10 +36,11 @@ variable "dms_config" {
   description = "Configuration for AWS DMS Serverless (Aurora PostgreSQL -> S3 Parquet)"
   type = object({
     enabled              = optional(bool, false)
-    min_capacity_units   = optional(number, 1)
-    max_capacity_units   = optional(number, 4)
+    min_capacity_units   = optional(number, 2)
+    max_capacity_units   = optional(number, 32)
     table_mappings       = optional(string)
     replication_settings = optional(string)
+    log_retention_days   = optional(number, 7)
   })
   default = {}
 }
@@ -47,22 +54,23 @@ variable "vpc_name" {
 variable "aurora_config" {
   description = "Configuration for the Aurora Serverless v2 PostgreSQL cluster"
   type = object({
-    vpc_id                  = optional(string, null)
-    subnet_ids              = optional(list(string), null)
-    allowed_cidr_blocks     = optional(list(string), ["0.0.0.0/0"])
-    db_name                 = optional(string, "flightradar")
-    admin_username          = optional(string, "dbadmin")
-    admin_password          = string
-    serverless_min_capacity = optional(number, 0.5)
-    serverless_max_capacity = optional(number, 8)
-    backup_retention_days   = optional(number, 7)
-    publicly_accessible     = optional(bool, false)
-    snapshot_identifier         = optional(string, null)
-    final_snapshot_identifier   = optional(string, null)
-    skip_final_snapshot         = optional(bool, false)
-    deletion_protection         = optional(bool, false)
-    log_retention_days      = optional(number, 7)
-    reader_count                = optional(number, 0)
+    vpc_id                     = optional(string, null)
+    subnet_ids                 = optional(list(string), null)
+    allowed_cidr_blocks        = optional(list(string), ["0.0.0.0/0"])
+    db_name                    = optional(string, "flightradar")
+    admin_username             = optional(string, "dbadmin")
+    admin_password             = optional(string, "")
+    serverless_min_capacity    = optional(number, 2.0)
+    serverless_max_capacity    = optional(number, 32)
+    backup_retention_days      = optional(number, 7)
+    publicly_accessible        = optional(bool, false)
+    snapshot_identifier        = optional(string, null)
+    final_snapshot_identifier  = optional(string, null)
+    skip_final_snapshot        = optional(bool, false)
+    deletion_protection        = optional(bool, false)
+    log_retention_days         = optional(number, 7)
+    create_log_group           = optional(bool, false)
+    reader_count               = optional(number, 0)
     auto_minor_version_upgrade = optional(bool, true)
   })
 }

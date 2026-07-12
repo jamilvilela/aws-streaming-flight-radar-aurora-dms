@@ -37,9 +37,12 @@ aurora_config = {
   admin_username      = ""
   admin_password      = ""  # override via RDS_ADMIN_PASSWORD in .env
 
-  # Aurora Serverless v2 scaling: 0.5 ACU (min) - 8 ACU (max)
-  serverless_min_capacity = 0.5
-  serverless_max_capacity = 8
+  # Aurora Serverless v2 scaling
+  # Aumentado para suportar 5GB de full load + 150MB/5min de streaming CDC
+  # min 2 ACU para operação estável com pglogical e WAL pesado
+  # max 32 ACU para picos de full load e alto throughput de CDC
+  serverless_min_capacity = 2.0
+  serverless_max_capacity = 16
 
   backup_retention_days = 7
   publicly_accessible   = true
@@ -47,18 +50,22 @@ aurora_config = {
   skip_final_snapshot          = false
   final_snapshot_identifier    = null  # gerado dinamicamente: {project_name}-final-snapshot-{YYYYMMDD}
   deletion_protection          = false
-  reader_count                 = 0  # 0 = apenas writer (mais econômico)
+  log_retention_days      = 30
+  create_log_group        = false
+  reader_count                 = 1  # 1 reader para distribuir carga de leitura durante CDC
   auto_minor_version_upgrade  = true
 }
 
 ################################################
 # DMS Serverless Configuration
-# DMS Serverless gerencia o compute automaticamente — sem necessidade de
-# escolher classe de instância ou armazenamento.
-# min_capacity_units=1 / max_capacity_units=4 para full-load-and-cdc.
+# Aumentado para suportar 150MB/5min de throughput CDC:
+# - min_capacity_units=2: baseline para CDC contínuo
+# - max_capacity_units=32: pico para full load de 5GB
+# DMS Serverless escala automaticamente entre min e max baseado na carga.
+# O full load de 5GB pode exigir até 32 ACU para conclusão em tempo hábil.
 dms_config = {
   enabled            = true
-  min_capacity_units = 1
-  max_capacity_units = 4
+  min_capacity_units = 2
+  max_capacity_units = 8
 }
 

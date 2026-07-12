@@ -114,6 +114,12 @@ variable "log_retention_days" {
   default     = 7
 }
 
+variable "create_log_group" {
+  description = "Create CloudWatch log group (set false if RDS creates it automatically)"
+  type        = bool
+  default     = false
+}
+
 variable "reader_count" {
   description = "Number of Aurora reader instances (0 = writer only)"
   type        = number

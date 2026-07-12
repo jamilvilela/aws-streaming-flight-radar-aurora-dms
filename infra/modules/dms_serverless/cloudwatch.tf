@@ -10,3 +10,143 @@ resource "aws_cloudwatch_log_group" "dms" {
     Name = "${var.project_name}-dms-serverless-log-group"
   })
 }
+
+# ---------------------------------------------------------------------------
+# CloudWatch Dashboard — monitoramento do pipeline DMS
+# Métricas-chave para acompanhar throughput de CDC em tempo real
+# ---------------------------------------------------------------------------
+resource "aws_cloudwatch_dashboard" "dms" {
+  dashboard_name = "${var.project_name}-dms-pipeline"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        x    = 0
+        y    = 0
+        width = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/DMS", "CDCChangesThroughput", "ReplicationConfigIdentifier",
+             "${var.project_name}-dms-serverless-config"],
+            ["AWS/DMS", "CDCChangesThroughput", "ReplicationConfigIdentifier",
+             "${var.project_name}-dms-serverless-config", { stat = "Average" }],
+          ]
+          period = 60
+          stat   = "Sum"
+          region = var.region
+          title  = "CDC Changes Throughput (bytes/s)"
+        }
+      },
+      {
+        type = "metric"
+        x    = 12
+        y    = 0
+        width = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/DMS", "CDCChangesCount", "ReplicationConfigIdentifier",
+             "${var.project_name}-dms-serverless-config"],
+          ]
+          period = 60
+          stat   = "Sum"
+          region = var.region
+          title  = "CDC Changes Count (records/s)"
+        }
+      },
+      {
+        type = "metric"
+        x    = 0
+        y    = 6
+        width = 8
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/DMS", "CpuUsage", "ReplicationConfigIdentifier",
+             "${var.project_name}-dms-serverless-config"],
+          ]
+          period = 60
+          stat   = "Average"
+          region = var.region
+          title  = "CPU Usage (%)"
+        }
+      },
+      {
+        type = "metric"
+        x    = 8
+        y    = 6
+        width = 8
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/DMS", "FreeMemory", "ReplicationConfigIdentifier",
+             "${var.project_name}-dms-serverless-config"],
+          ]
+          period = 60
+          stat   = "Average"
+          region = var.region
+          title  = "Free Memory (MB)"
+        }
+      },
+      {
+        type = "metric"
+        x    = 16
+        y    = 6
+        width = 8
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/DMS", "CDCLatencyTarget", "ReplicationConfigIdentifier",
+             "${var.project_name}-dms-serverless-config"],
+          ]
+          period = 60
+          stat   = "Average"
+          region = var.region
+          title  = "CDC Target Latency (s)"
+        }
+      },
+      {
+        type = "metric"
+        x    = 0
+        y    = 12
+        width = 24
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/Aurora", "CPUCreditBalance", "DBClusterIdentifier",
+             "${var.project_name}-aurora"],
+            ["AWS/Aurora", "DatabaseConnections", "DBClusterIdentifier",
+             "${var.project_name}-aurora"],
+            ["AWS/Aurora", "ReplicaLag", "DBClusterIdentifier",
+             "${var.project_name}-aurora"],
+          ]
+          period = 60
+          stat   = "Average"
+          region = var.region
+          title  = "Aurora Cluster Metrics"
+        }
+      },
+      {
+        type = "metric"
+        x    = 0
+        y    = 18
+        width = 24
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/S3", "BucketSizeBytes", "BucketName",
+             var.landing_bucket_name, { stat = "Average" }],
+            ["AWS/S3", "NumberOfObjects", "BucketName",
+             var.landing_bucket_name, { stat = "Average" }],
+          ]
+          period = 3600
+          stat   = "Average"
+          region = var.region
+          title  = "S3 Landing Bucket Growth"
+        }
+      },
+    ]
+  })
+}

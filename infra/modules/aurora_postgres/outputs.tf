@@ -51,7 +51,7 @@ output "cluster_parameter_group_name" {
 
 output "log_group_name" {
   description = "CloudWatch log group name"
-  value       = aws_cloudwatch_log_group.postgres.name
+  value       = var.create_log_group ? aws_cloudwatch_log_group.postgres[0].name : data.aws_cloudwatch_log_group.postgres.name
 }
 
 output "writer_instance_id" {
