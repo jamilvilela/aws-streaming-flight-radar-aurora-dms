@@ -16,6 +16,13 @@ from .models import PositionRow
 logger = logging.getLogger("repository")
 
 
+def _normalize_icao(value: str | None) -> str | None:
+    """Converte 'N/A', '\\N', strings vazias ou None em None (NULL)."""
+    if not value or value in ("N/A", "\\N"):
+        return None
+    return value
+
+
 class DatabaseRepository:
     """Camada de acesso a dados. Isola todo SQL do resto da aplicação."""
 
@@ -140,7 +147,10 @@ class DatabaseRepository:
                 """,
                 [(
                     r["id"], r["name"], r.get("alias"),
-                    r.get("iata_code"), r.get("icao_code"),
+                    r.get("iata_code"),
+                    # Converte "N/A" ou strings vazias em None (NULL)
+                    # para não violar a UNIQUE constraint de icao_code
+                    _normalize_icao(r.get("icao_code")),
                     r.get("callsign"), r.get("country"),
                     r.get("is_active", False),
                 ) for r in rows],
