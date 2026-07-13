@@ -44,36 +44,4 @@ output "aurora_admin_username" {
   sensitive   = true
 }
 
-# ============================================================================
-# DMS Serverless outputs
-# ============================================================================
 
-output "dms_replication_config_arn" {
-  description = "ARN of the DMS Serverless replication config"
-  value       = try(module.dms_serverless[0].replication_config_arn, null)
-}
-
-output "dms_replication_config_id" {
-  description = "ID of the DMS Serverless replication config"
-  value       = try(module.dms_serverless[0].replication_config_id, null)
-}
-
-output "dms_replication_config_identifier" {
-  description = "Identifier (name) of the DMS Serverless replication config"
-  value       = try(module.dms_serverless[0].replication_config_identifier, null)
-}
-
-output "dms_source_endpoint_arn" {
-  description = "ARN of the DMS source endpoint (Aurora PostgreSQL)"
-  value       = try(module.dms_serverless[0].source_endpoint_arn, null)
-}
-
-output "dms_target_endpoint_arn" {
-  description = "ARN of the DMS target endpoint (S3 Parquet)"
-  value       = try(module.dms_serverless[0].target_endpoint_arn, null)
-}
-
-output "dms_security_group_id" {
-  description = "DMS Serverless security group ID"
-  value       = try(module.dms_serverless[0].dms_security_group_id, null)
-}

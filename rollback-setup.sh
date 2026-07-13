@@ -1,5 +1,5 @@
 #!/bin/bash
-# rollback-setup.sh - DESTRÓI os recursos do Aurora Serverless v2 e DMS
+# rollback-setup.sh - DESTRÓI os recursos do Aurora Serverless v2 e AWS Batch
 # Usage: ./rollback-setup.sh
 #
 # Fluxo:
@@ -40,7 +40,7 @@ PROJECT_NAME="${PROJECT_NAME:-flight-radar-stream}"
 REGION="${AWS_REGION:-us-east-1}"
 
 # =============================================================================
-# STEP 3: Terraform destroy (Aurora + DMS)
+# STEP 3: Terraform destroy (Aurora + Batch)
 # skip_final_snapshot=false → Terraform cria snapshot final automático no destroy
 # =============================================================================
 echo ""
@@ -68,7 +68,7 @@ echo "════════════════════════�
 echo "  ✅ Rollback concluído!"
 echo ""
 echo "  📌 Todos os recursos foram DESTRUÍDOS via Terraform."
-echo "  📌 Aurora Serverless v2 e DMS Serverless foram deletados."
+echo "  📌 Aurora Serverless v2 e AWS Batch foram deletados."
 echo "  📌 Snapshot final do Aurora foi gerado automaticamente."
 echo ""
 echo "  ▶️  Para recriar o ambiente do zero, rode:"

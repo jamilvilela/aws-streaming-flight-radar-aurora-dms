@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------------
 # Aurora Serverless v2 PostgreSQL — Cluster Parameter Group
-# Configurações essenciais para DMS CDC via pglogical
+# Configurações essenciais para replicação lógica via pglogical
 # ---------------------------------------------------------------------------
 resource "aws_rds_cluster_parameter_group" "this" {
   name        = "${var.project_name}-aurora-pg"
@@ -129,7 +129,7 @@ resource "aws_rds_cluster" "this" {
   engine_version     = "17.7"
   engine_mode        = "provisioned"
 
-  database_name   = var.db_name
+  database_name   = var.snapshot_identifier != null ? null : var.db_name
   master_username = var.admin_username
   master_password = var.admin_password
   port            = 5432

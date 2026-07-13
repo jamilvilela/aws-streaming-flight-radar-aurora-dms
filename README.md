@@ -1,13 +1,15 @@
 # aws-streaming-flight-radar-aurora-dms
 
-**Aurora Serverless v2 PostgreSQL + AWS DMS Serverless** — Pipeline de replicação de dados de voos do Aurora PostgreSQL para S3 (Parquet) via DMS com captura CDC.
+**Aurora Serverless v2 PostgreSQL + AWS Batch** — Infraestrutura de banco de dados relacional para dados de voos com schema `flight_radar` e jobs de carga de dados via AWS Batch.
+
+> ⚠️ O serviço **DMS Serverless** foi movido para o repositório separado: [aws-streaming-flight-radar-dms](https://github.com/...)
 
 ## Serviços
 
 | Serviço | Descrição |
 |---------|-----------|
 | **Aurora Serverless v2 PostgreSQL** | Banco relacional com schema `flight_radar` (tabelas: `aircraft`, `airports`, `airlines`, `flights`, `aircraft_positions`) |
-| **AWS DMS Serverless** | Replicação Full Load + CDC do Aurora para S3 no formato Parquet |
+| **AWS Batch** | Jobs de carga de dados: `historical`, `stream`, `load-reference` |
 
 ## Estrutura
 
@@ -23,10 +25,12 @@ infra/                     # Terraform
 │   └── terraform.tfvars   # Valores das variáveis
 └── modules/
     ├── aurora_postgres/   # Módulo Aurora Serverless v2
-    └── dms_serverless/    # Módulo DMS Serverless (Aurora → S3)
+    └── aws_batch/         # Módulo AWS Batch (carga de dados)
 
-app/seed_data/
-└── generate_dms_data.py   # Geração de dados de teste
+app/
+├── seed_data/             # Geradores de dados (historical, stream, load-reference)
+├── data/                  # Dados de referência (CSVs)
+└── sql/                   # Schema SQL
 
 setup-env.sh               # Deploy automatizado (Terraform)
 rollback-setup.sh          # Destrói recursos (Terraform destroy)
@@ -40,15 +44,10 @@ cp .env.example .env
 # Edite .env com RDS_ADMIN_PASSWORD, AWS_REGION
 
 # 2. Configure tfvars
-# Edite infra/tfvars/terraform.tfvars com VPC, subnets
+# Edite infra/tfvars/terraform.tfvars
 
 # 3. Deploy
 ./setup-env.sh
-
-# 4. Gere dados de teste
-cd app/seed_data
-pip install -r ../requirements.txt
-python generate_dms_data.py all
 ```
 
 ## Destruir recursos
@@ -56,3 +55,8 @@ python generate_dms_data.py all
 ```bash
 ./rollback-setup.sh
 ```
+
+## Recursos auxiliares
+
+Cada módulo contém seus próprios recursos de IAM, KMS, CloudWatch e Security Groups,
+mantidos de forma organizada e separada por serviço.

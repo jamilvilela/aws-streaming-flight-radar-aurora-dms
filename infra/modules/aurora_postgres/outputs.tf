@@ -10,7 +10,10 @@ output "cluster_arn" {
 
 output "db_name" {
   description = "Database name"
-  value       = aws_rds_cluster.this.database_name
+  # Usa o nome configurado (var.db_name) em vez do recurso real
+  # para que o Batch receba o nome do banco mesmo quando o cluster
+  # foi restaurado de snapshot sem database default
+  value = var.db_name != null && var.db_name != "" ? var.db_name : "flightradar"
 }
 
 output "db_endpoint" {

@@ -1,6 +1,6 @@
 #!/bin/bash
 # setup-env.sh - Load environment variables, deploy Terraform for
-# Aurora Serverless v2 PostgreSQL and DMS Serverless, then verify
+# Aurora Serverless v2 PostgreSQL and AWS Batch, then verify
 # every resource and dump connection info.
 #
 # Usage:   ./setup-env.sh
@@ -153,57 +153,10 @@ ok "plan concluido (salvo em tfplan)"
 if [ "$SKIP_APPLY" -eq 1 ]; then
   warn "--skip-apply informado; apply nao sera executado."
 else
-  # -------------------------------------------------------------------------
-  # STEP 6.5 — Ensure DMS secret exists (data source, not managed by TF)
-  # -------------------------------------------------------------------------
-  PROJECT_NAME="${PROJECT_NAME:-${TF_VAR_project_name:-$(grep -E '^project_name' "$TFVARS_FILE" | head -1 | cut -d= -f2 | tr -d ' \"')}}"
-  PROJECT_NAME="${PROJECT_NAME//$'\r'}"
-  DMS_SECRET_NAME="${PROJECT_NAME}-dms-aurora-credentials"
-
-  if ! aws secretsmanager describe-secret --secret-id "$DMS_SECRET_NAME" --region "$AWS_REGION" &>/dev/null; then
-    echo -e "  ${BLUE}Criando secret $DMS_SECRET_NAME...${NC}"
-    aws secretsmanager create-secret \
-      --name "$DMS_SECRET_NAME" \
-      --description "RDS PostgreSQL credentials for DMS source endpoint (created by setup-env.sh)" \
-      --secret-string '{"username":"placeholder","password":"placeholder"}' \
-      --region "$AWS_REGION" > /dev/null
-    ok "Secret $DMS_SECRET_NAME criado"
-  else
-    # Se existir mas estiver agendado para delecao, restaura
-    DELETION_DATE=$(aws secretsmanager describe-secret \
-      --secret-id "$DMS_SECRET_NAME" \
-      --query 'DeletedDate' --output text --region "$AWS_REGION" 2>/dev/null)
-    if [ -n "$DELETION_DATE" ] && [ "$DELETION_DATE" != "None" ]; then
-      echo -e "  ${BLUE}Restaurando secret $DMS_SECRET_NAME (agendado para delecao)...${NC}"
-      aws secretsmanager restore-secret \
-        --secret-id "$DMS_SECRET_NAME" \
-        --region "$AWS_REGION" > /dev/null
-      ok "Secret restaurado"
-    else
-      ok "Secret $DMS_SECRET_NAME ja existe"
-    fi
-  fi
-
   section "STEP 7 — terraform apply"
   terraform apply -var-file="$TFVARS_FILE" -auto-approve tfplan
   [ $? -ne 0 ] && { fail "terraform apply falhou"; exit 2; }
   ok "apply concluido"
-
-  # Populate DMS Secrets Manager secret with Aurora credentials
-  if [ -n "${RDS_ADMIN_PASSWORD:-}" ]; then
-    AURORA_USER="$(terraform output -raw aurora_admin_username 2>/dev/null || echo "dbadmin")"
-    AURORA_ENDPOINT="$(terraform output -raw aurora_endpoint 2>/dev/null || echo "")"
-    AURORA_PORT="$(terraform output -raw aurora_port 2>/dev/null || echo "5432")"
-    AURORA_DBNAME="$(terraform output -raw aurora_db_name 2>/dev/null || echo "flightradar")"
-    DMS_SECRET_VALUE="{\"username\":\"${AURORA_USER}\",\"password\":\"${RDS_ADMIN_PASSWORD}\",\"host\":\"${AURORA_ENDPOINT}\",\"port\":${AURORA_PORT},\"dbname\":\"${AURORA_DBNAME}\"}"
-    aws secretsmanager put-secret-value \
-      --secret-id "$DMS_SECRET_NAME" \
-      --secret-string "$DMS_SECRET_VALUE" \
-      --region "$AWS_REGION" &>/dev/null
-    ok "DMS secret '$DMS_SECRET_NAME' populated with Aurora credentials (host/port/dbname included)"
-  else
-    warn "RDS_ADMIN_PASSWORD nao definido no .env. Nao foi possivel popular o secret do DMS."
-  fi
 
 fi
 
@@ -255,15 +208,6 @@ print_output aurora_admin_username true
 print_output aurora_security_group_id
 print_output aurora_connection true
 
-echo ""
-echo -e "  ${BLUE}-- DMS Serverless --${NC}"
-print_output dms_replication_config_id
-print_output dms_replication_config_arn
-print_output dms_source_endpoint_arn
-print_output dms_target_endpoint_arn
-print_output dms_replication_config_identifier
-print_output dms_security_group_id
-
 # ---------------------------------------------------------------------------
 # STEP 9: Post-deploy verification
 # ---------------------------------------------------------------------------
@@ -303,24 +247,22 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 9.2 DMS Serverless
+# 9.2 KMS keys
 # ---------------------------------------------------------------------------
-section "9.2 — DMS Serverless"
-DMS_CONFIGS=$(aws dms describe-replication-configs --region "$REGION" \
-  --query "ReplicationConfigs[?contains(ReplicationConfigIdentifier, \`${PROJECT_NAME}\`)].{ID:ReplicationConfigIdentifier,Status:Status}" \
+section "9.2 — KMS Keys"
+KMS_KEYS=$(aws kms list-aliases --region "$REGION" \
+  --query 'Aliases[?contains(AliasName, `'"$PROJECT_NAME"'`)].AliasName' \
   --output json 2>/dev/null || echo "[]")
-DMS_CONFIG_COUNT=$(echo "$DMS_CONFIGS" | jq 'length')
-if [ "$DMS_CONFIG_COUNT" -gt 0 ]; then
-  ok "$DMS_CONFIG_COUNT DMS Serverless config(s):"
-  echo "$DMS_CONFIGS" | jq -r '.[] | "   - \(.ID) (status: \(.Status))"'
+KMS_COUNT=$(echo "$KMS_KEYS" | jq 'length')
+if [ "$KMS_COUNT" -gt 0 ]; then
+  ok "$KMS_COUNT KMS alias(es):"
+  echo "$KMS_KEYS" | jq -r '.[] | "   - " + .'
 else
-  warn "Nenhuma DMS Serverless config do projeto encontrada"
+  warn "Nenhum alias KMS do projeto encontrado (pode ser intencional)"
 fi
 
 # ---------------------------------------------------------------------------
-# 9.3 KMS keys
-# ---------------------------------------------------------------------------
-section "9.3 — KMS Keys"
+# STEP 10: Final summary
 KMS_KEYS=$(aws kms list-aliases --region "$REGION" \
   --query 'Aliases[?contains(AliasName, `'"$PROJECT_NAME"'`)].AliasName' \
   --output json 2>/dev/null || echo "[]")
@@ -359,9 +301,6 @@ echo "  DB_PASSWORD='<sua senha>'"
 echo ""
 echo -e "Para conectar via psql:"
 echo -e "  ${CYAN}psql -h ${AURORA_ENDPOINT} -p ${AURORA_PORT} -d ${AURORA_DB} -U ${AURORA_USER}${NC}"
-echo ""
-echo -e "Para gerar dados de teste no banco:"
-echo -e "  ${CYAN}cd app/seed_data && python generate_dms_data.py all${NC}"
 echo ""
 
 if [ "${MISSING:-0}" = "1" ]; then
