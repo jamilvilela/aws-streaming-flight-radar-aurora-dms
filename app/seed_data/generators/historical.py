@@ -233,13 +233,46 @@ class HistoricalGenerator(BaseGenerator):
         # 1. Consulta o maior flight_id atual para usar contador local
         next_id = self.repo.get_max_flight_id() + 1
 
-        # 2. Gera TUDO em memória (zero round trips)
+        # 2. Verifica se já existem voos neste ano (para execuções incrementais)
+        latest_existing = self.repo.get_latest_flight_date(year_start.year)
+        if latest_existing:
+            # Já há dados neste ano: gera apenas a partir da data mais recente
+            year_end = year_start.replace(year=year_start.year + 1)
+            available_days = (year_end - latest_existing).days
+            if available_days <= 0:
+                logger.info(
+                    "Ano %d já completo (último voo: %s). Pulando.",
+                    year_start.year, latest_existing
+                )
+                return 0, 0
+            logger.info(
+                "Ano %d: dados existentes até %s. Gerando %d dias restantes.",
+                year_start.year, latest_existing, available_days
+            )
+            min_ref_time = latest_existing
+        else:
+            # Ano vazio: pode gerar do início
+            min_ref_time = year_start
+
+        # Limita dias para não gerar datas futuras no ano atual
+        now = datetime.now(timezone.utc)
+        year_end = year_start.replace(year=year_start.year + 1)
+        max_ref_time = min(year_end, now)
+        if max_ref_time <= min_ref_time:
+            logger.info("Ano %d não tem janela válida para geração.", year_start.year)
+            return 0, 0
+
+        # 3. Gera TUDO em memória (zero round trips)
         flight_rows: list[dict] = []
         position_buffer: list = []
 
         for i in range(num_flights):
-            days_offset = random.uniform(0, 365)
-            ref_time = year_start + timedelta(days=days_offset)
+            # Distribui uniformemente entre min_ref_time e max_ref_time
+            total_seconds = (max_ref_time - min_ref_time).total_seconds()
+            if total_seconds <= 0:
+                break
+            offset_seconds = random.uniform(0, total_seconds)
+            ref_time = min_ref_time + timedelta(seconds=offset_seconds)
 
             flight_row = self._random_flight_row(ref_time)
             flight_row["flight_id"] = next_id

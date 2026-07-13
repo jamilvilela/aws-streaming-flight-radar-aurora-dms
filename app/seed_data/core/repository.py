@@ -281,6 +281,23 @@ class DatabaseRepository:
             cur.execute("SELECT COALESCE(MAX(flight_id), 0) AS max_id FROM flights")
             return cur.fetchone()["max_id"]
 
+    def get_latest_flight_date(self, year: int) -> datetime | None:
+        """
+        Retorna a data mais recente (scheduled_departure) de voos no ano informado.
+        Retorna None se não houver voos no ano.
+        """
+        with self.cursor() as cur:
+            cur.execute(
+                """
+                SELECT MAX(scheduled_departure) AS latest
+                FROM flights
+                WHERE EXTRACT(YEAR FROM scheduled_departure) = %s
+                """,
+                (year,),
+            )
+            row = cur.fetchone()
+            return row["latest"] if row and row["latest"] else None
+
     def insert_flights_batch(
         self, rows: list[dict], cur=None
     ) -> int:
