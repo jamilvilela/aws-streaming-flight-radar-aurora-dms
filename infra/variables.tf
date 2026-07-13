@@ -74,3 +74,28 @@ variable "aurora_config" {
     auto_minor_version_upgrade = optional(bool, true)
   })
 }
+
+variable "batch_config" {
+  description = "Configuration for AWS Batch compute environment and job definitions"
+  type = object({
+    enabled                     = optional(bool, false)
+    ecr_image_uri               = optional(string, "")
+    efs_file_system_id          = optional(string, "")
+    efs_file_system_arn         = optional(string, "")
+    compute_instance_types      = optional(list(string), ["t3.medium", "t3.large"])
+    compute_min_vcpus           = optional(number, 0)
+    compute_max_vcpus           = optional(number, 16)
+    compute_desired_vcpus       = optional(number, 0)
+    compute_spot_bid_percentage = optional(number, 100)
+
+    job_historical_vcpus  = optional(number, 2)
+    job_historical_memory = optional(number, 4096)
+    job_stream_vcpus      = optional(number, 1)
+    job_stream_memory     = optional(number, 2048)
+    job_load_ref_vcpus    = optional(number, 1)
+    job_load_ref_memory   = optional(number, 1024)
+
+    log_retention_days = optional(number, 30)
+  })
+  default = {}
+}

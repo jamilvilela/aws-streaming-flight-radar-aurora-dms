@@ -3,8 +3,8 @@
 # Para DMS escrever no S3 landing bucket via VPC
 # ---------------------------------------------------------------------------
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = var.vpc_id
-  service_name = "com.amazonaws.${var.region}.s3"
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.s3"
   vpc_endpoint_type = "Gateway"
 
   route_table_ids = [data.aws_vpc.this.main_route_table_id]
@@ -19,12 +19,12 @@ resource "aws_vpc_endpoint" "s3" {
 # DMS precisa acessar o Secrets Manager para credenciais do Aurora
 # ---------------------------------------------------------------------------
 resource "aws_vpc_endpoint" "secrets_manager" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.secretsmanager"
-  vpc_endpoint_type   = "Interface"
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.secretsmanager"
+  vpc_endpoint_type = "Interface"
 
-  subnet_ids          = var.subnet_ids
-  security_group_ids  = [aws_security_group.secrets_endpoint.id]
+  subnet_ids         = var.subnet_ids
+  security_group_ids = [aws_security_group.secrets_endpoint.id]
 
   private_dns_enabled = true
 

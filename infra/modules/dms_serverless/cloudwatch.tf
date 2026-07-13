@@ -21,17 +21,17 @@ resource "aws_cloudwatch_dashboard" "dms" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        type = "metric"
-        x    = 0
-        y    = 0
-        width = 12
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
         height = 6
         properties = {
           metrics = [
             ["AWS/DMS", "CDCChangesThroughput", "ReplicationConfigIdentifier",
-             "${var.project_name}-dms-serverless-config"],
+            "${var.project_name}-dms-serverless-config"],
             ["AWS/DMS", "CDCChangesThroughput", "ReplicationConfigIdentifier",
-             "${var.project_name}-dms-serverless-config", { stat = "Average" }],
+            "${var.project_name}-dms-serverless-config", { stat = "Average" }],
           ]
           period = 60
           stat   = "Sum"
@@ -40,15 +40,15 @@ resource "aws_cloudwatch_dashboard" "dms" {
         }
       },
       {
-        type = "metric"
-        x    = 12
-        y    = 0
-        width = 12
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
         height = 6
         properties = {
           metrics = [
             ["AWS/DMS", "CDCChangesCount", "ReplicationConfigIdentifier",
-             "${var.project_name}-dms-serverless-config"],
+            "${var.project_name}-dms-serverless-config"],
           ]
           period = 60
           stat   = "Sum"
@@ -57,15 +57,15 @@ resource "aws_cloudwatch_dashboard" "dms" {
         }
       },
       {
-        type = "metric"
-        x    = 0
-        y    = 6
-        width = 8
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 8
         height = 6
         properties = {
           metrics = [
             ["AWS/DMS", "CpuUsage", "ReplicationConfigIdentifier",
-             "${var.project_name}-dms-serverless-config"],
+            "${var.project_name}-dms-serverless-config"],
           ]
           period = 60
           stat   = "Average"
@@ -74,15 +74,15 @@ resource "aws_cloudwatch_dashboard" "dms" {
         }
       },
       {
-        type = "metric"
-        x    = 8
-        y    = 6
-        width = 8
+        type   = "metric"
+        x      = 8
+        y      = 6
+        width  = 8
         height = 6
         properties = {
           metrics = [
             ["AWS/DMS", "FreeMemory", "ReplicationConfigIdentifier",
-             "${var.project_name}-dms-serverless-config"],
+            "${var.project_name}-dms-serverless-config"],
           ]
           period = 60
           stat   = "Average"
@@ -91,15 +91,15 @@ resource "aws_cloudwatch_dashboard" "dms" {
         }
       },
       {
-        type = "metric"
-        x    = 16
-        y    = 6
-        width = 8
+        type   = "metric"
+        x      = 16
+        y      = 6
+        width  = 8
         height = 6
         properties = {
           metrics = [
             ["AWS/DMS", "CDCLatencyTarget", "ReplicationConfigIdentifier",
-             "${var.project_name}-dms-serverless-config"],
+            "${var.project_name}-dms-serverless-config"],
           ]
           period = 60
           stat   = "Average"
@@ -108,19 +108,19 @@ resource "aws_cloudwatch_dashboard" "dms" {
         }
       },
       {
-        type = "metric"
-        x    = 0
-        y    = 12
-        width = 24
+        type   = "metric"
+        x      = 0
+        y      = 12
+        width  = 24
         height = 6
         properties = {
           metrics = [
             ["AWS/Aurora", "CPUCreditBalance", "DBClusterIdentifier",
-             "${var.project_name}-aurora"],
+            "${var.project_name}-aurora"],
             ["AWS/Aurora", "DatabaseConnections", "DBClusterIdentifier",
-             "${var.project_name}-aurora"],
+            "${var.project_name}-aurora"],
             ["AWS/Aurora", "ReplicaLag", "DBClusterIdentifier",
-             "${var.project_name}-aurora"],
+            "${var.project_name}-aurora"],
           ]
           period = 60
           stat   = "Average"
@@ -129,17 +129,17 @@ resource "aws_cloudwatch_dashboard" "dms" {
         }
       },
       {
-        type = "metric"
-        x    = 0
-        y    = 18
-        width = 24
+        type   = "metric"
+        x      = 0
+        y      = 18
+        width  = 24
         height = 6
         properties = {
           metrics = [
             ["AWS/S3", "BucketSizeBytes", "BucketName",
-             var.landing_bucket_name, { stat = "Average" }],
+            var.landing_bucket_name, { stat = "Average" }],
             ["AWS/S3", "NumberOfObjects", "BucketName",
-             var.landing_bucket_name, { stat = "Average" }],
+            var.landing_bucket_name, { stat = "Average" }],
           ]
           period = 3600
           stat   = "Average"

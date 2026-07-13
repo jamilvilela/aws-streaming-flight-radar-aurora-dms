@@ -152,3 +152,45 @@ module "dms_serverless" {
     module.aurora_postgres
   ]
 }
+
+module "aws_batch" {
+  count  = var.batch_config.enabled ? 1 : 0
+  source = "./modules/aws_batch"
+
+  project_name = var.project_name
+  environment  = var.environment
+  aws_region   = var.aws_region
+
+  subnet_ids        = local.effective_subnet_ids
+  security_group_id = module.aurora_postgres.security_group_id
+
+  ecr_image_uri = var.batch_config.ecr_image_uri
+
+  db_host     = module.aurora_postgres.db_endpoint
+  db_port     = module.aurora_postgres.db_port
+  db_name     = module.aurora_postgres.db_name
+  db_user     = var.rds_admin_username != null ? var.rds_admin_username : var.aurora_config.admin_username
+  db_password = var.rds_admin_password != null ? var.rds_admin_password : var.aurora_config.admin_password
+
+  efs_file_system_id  = var.batch_config.efs_file_system_id
+  efs_file_system_arn = var.batch_config.efs_file_system_arn
+
+  compute_instance_types      = var.batch_config.compute_instance_types
+  compute_min_vcpus           = var.batch_config.compute_min_vcpus
+  compute_max_vcpus           = var.batch_config.compute_max_vcpus
+  compute_desired_vcpus       = var.batch_config.compute_desired_vcpus
+  compute_spot_bid_percentage = var.batch_config.compute_spot_bid_percentage
+
+  job_historical_vcpus  = var.batch_config.job_historical_vcpus
+  job_historical_memory = var.batch_config.job_historical_memory
+  job_stream_vcpus      = var.batch_config.job_stream_vcpus
+  job_stream_memory     = var.batch_config.job_stream_memory
+  job_load_ref_vcpus    = var.batch_config.job_load_ref_vcpus
+  job_load_ref_memory   = var.batch_config.job_load_ref_memory
+
+  log_retention_days = var.batch_config.log_retention_days
+
+  tags = var.tags
+
+  depends_on = [module.aurora_postgres]
+}

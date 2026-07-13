@@ -1,7 +1,7 @@
-aws_region         = "us-east-1"
-project_name       = "flight-radar-stream"
-environment        = "production"
-vpc_name           = "default-vpc"
+aws_region   = "us-east-1"
+project_name = "flight-radar-stream"
+environment  = "production"
+vpc_name     = "default-vpc"
 
 
 buckets = {
@@ -35,7 +35,7 @@ aurora_config = {
   allowed_cidr_blocks = ["0.0.0.0/0"]
   db_name             = "flightradar"
   admin_username      = ""
-  admin_password      = ""  # override via RDS_ADMIN_PASSWORD in .env
+  admin_password      = "" # override via RDS_ADMIN_PASSWORD in .env
 
   # Aurora Serverless v2 scaling
   # Aumentado para suportar 5GB de full load + 150MB/5min de streaming CDC
@@ -44,16 +44,16 @@ aurora_config = {
   serverless_min_capacity = 0.0
   serverless_max_capacity = 4
 
-  backup_retention_days = 7
-  publicly_accessible   = true
-  snapshot_identifier   = null
-  skip_final_snapshot          = false
-  final_snapshot_identifier    = null  # gerado dinamicamente: {project_name}-final-snapshot-{YYYYMMDD}
-  deletion_protection          = false
-  log_retention_days      = 30
-  create_log_group        = false
-  reader_count                 = 1  # 1 reader para distribuir carga de leitura durante CDC
-  auto_minor_version_upgrade  = true
+  backup_retention_days      = 7
+  publicly_accessible        = true
+  snapshot_identifier        = null
+  skip_final_snapshot        = false
+  final_snapshot_identifier  = null # gerado dinamicamente: {project_name}-final-snapshot-{YYYYMMDD}
+  deletion_protection        = false
+  log_retention_days         = 30
+  create_log_group           = false
+  reader_count               = 1 # 1 reader para distribuir carga de leitura durante CDC
+  auto_minor_version_upgrade = true
 }
 
 ################################################
@@ -67,5 +67,38 @@ dms_config = {
   enabled            = true
   min_capacity_units = 2
   max_capacity_units = 8
+}
+
+################################################
+# AWS Batch Configuration
+# Para execução de jobs de carga de dados (historical, stream, load-reference)
+################################################
+batch_config = {
+  enabled = true
+  # ECR Image URI (deve ser criado antes: aws ecr create-repository --repository-name flight-radar-stream/batch)
+  # Exemplo: 123456789012.dkr.ecr.us-east-1.amazonaws.com/flight-radar-stream/batch:latest
+  ecr_image_uri = ""
+
+  # EFS File System (para armazenamento compartilhado entre jobs)
+  # Deve ser criado antes: aws efs create-file-system --creation-token flight-radar-batch
+  efs_file_system_id  = ""
+  efs_file_system_arn = ""
+
+  # Compute Environment (Spot instances para economia)
+  compute_instance_types      = ["t3.medium", "t3.large", "t3.xlarge"]
+  compute_min_vcpus           = 0
+  compute_max_vcpus           = 16
+  compute_desired_vcpus       = 0
+  compute_spot_bid_percentage = 100
+
+  # Job Resources
+  job_historical_vcpus  = 2
+  job_historical_memory = 4096 # 4 GB
+  job_stream_vcpus      = 1
+  job_stream_memory     = 2048 # 2 GB
+  job_load_ref_vcpus    = 1
+  job_load_ref_memory   = 1024 # 1 GB
+
+  log_retention_days = 30
 }
 

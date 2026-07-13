@@ -27,9 +27,9 @@ cells:
           c.relname                                 AS partition_name,
           pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
           COALESCE(s.n_live_tup, 0)                 AS estimated_rows
-      FROM pg_class c
-      LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
-      WHERE c.relname LIKE 'aircraft_positions_%'
+      FROM pg_catalog.pg_class c
+      LEFT JOIN pg_catalog.pg_stat_user_tables s ON s.relid = c.oid
+      WHERE c.relname LIKE 'aircraft_positions_2024%'
         AND c.relkind = 'r'
       ORDER BY c.relname;
     metadata: {}
@@ -822,6 +822,19 @@ cells:
           RETURN 6371.0 * c;
       END;
       $$;
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: "select min(recorded_at) as min_recorded_at, max(recorded_at) as
+      max_recorded_at, count(*) as total_positions\r
+
+      from aircraft_positions\r
+
+      where recorded_at > now() - interval '8 year';\r\n"
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: ""
     metadata: {}
 metadata:
   conn:

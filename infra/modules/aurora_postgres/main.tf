@@ -69,7 +69,7 @@ resource "aws_rds_cluster_parameter_group" "this" {
 
   parameter {
     name         = "wal_buffers"
-    value        = "65536"                    # 64MB in 8KB blocks
+    value        = "65536" # 64MB in 8KB blocks
     apply_method = "pending-reboot"
   }
 
@@ -124,36 +124,36 @@ resource "aws_security_group" "aurora" {
 # Aurora Serverless v2 Cluster
 # ---------------------------------------------------------------------------
 resource "aws_rds_cluster" "this" {
-  cluster_identifier  = "${var.project_name}-aurora"
-  engine              = "aurora-postgresql"
-  engine_version      = "17.7"
-  engine_mode         = "provisioned"
+  cluster_identifier = "${var.project_name}-aurora"
+  engine             = "aurora-postgresql"
+  engine_version     = "17.7"
+  engine_mode        = "provisioned"
 
-  database_name       = var.db_name
-  master_username     = var.admin_username
-  master_password     = var.admin_password
-  port                = 5432
+  database_name   = var.db_name
+  master_username = var.admin_username
+  master_password = var.admin_password
+  port            = 5432
 
   db_subnet_group_name            = aws_db_subnet_group.this.name
   db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.this.name
   vpc_security_group_ids          = [aws_security_group.aurora.id]
 
-  storage_encrypted      = true
-  kms_key_id            = var.kms_key_arn
+  storage_encrypted = true
+  kms_key_id        = var.kms_key_arn
 
-  backup_retention_period     = var.backup_retention_days
-  preferred_backup_window     = var.backup_window
+  backup_retention_period      = var.backup_retention_days
+  preferred_backup_window      = var.backup_window
   preferred_maintenance_window = var.maintenance_window
-  snapshot_identifier         = var.snapshot_identifier
-  copy_tags_to_snapshot          = true
-  final_snapshot_identifier      = var.final_snapshot_identifier
-  skip_final_snapshot            = var.skip_final_snapshot
-  deletion_protection            = var.deletion_protection
+  snapshot_identifier          = var.snapshot_identifier
+  copy_tags_to_snapshot        = true
+  final_snapshot_identifier    = var.final_snapshot_identifier
+  skip_final_snapshot          = var.skip_final_snapshot
+  deletion_protection          = var.deletion_protection
 
   # Serverless v2 scaling configuration
   serverlessv2_scaling_configuration {
-    min_capacity = var.serverless_min_capacity  # 0.5 ACU
-    max_capacity = var.serverless_max_capacity  # 8 ACU (max for pg)
+    min_capacity = var.serverless_min_capacity # 0.5 ACU
+    max_capacity = var.serverless_max_capacity # 8 ACU (max for pg)
   }
 
   enabled_cloudwatch_logs_exports = ["postgresql"]
@@ -171,11 +171,11 @@ resource "aws_rds_cluster" "this" {
 # Aurora Serverless v2 Instance (writer)
 # ---------------------------------------------------------------------------
 resource "aws_rds_cluster_instance" "writer" {
-  identifier         = "${var.project_name}-aurora-writer"
-  cluster_identifier = aws_rds_cluster.this.id
-  instance_class     = "db.serverless"
-  engine             = aws_rds_cluster.this.engine
-  engine_version     = aws_rds_cluster.this.engine_version
+  identifier                 = "${var.project_name}-aurora-writer"
+  cluster_identifier         = aws_rds_cluster.this.id
+  instance_class             = "db.serverless"
+  engine                     = aws_rds_cluster.this.engine
+  engine_version             = aws_rds_cluster.this.engine_version
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
   publicly_accessible        = var.publicly_accessible
 
@@ -190,11 +190,11 @@ resource "aws_rds_cluster_instance" "writer" {
 resource "aws_rds_cluster_instance" "reader" {
   count = var.reader_count
 
-  identifier         = "${var.project_name}-aurora-reader-${count.index + 1}"
-  cluster_identifier = aws_rds_cluster.this.id
-  instance_class     = "db.serverless"
-  engine             = aws_rds_cluster.this.engine
-  engine_version     = aws_rds_cluster.this.engine_version
+  identifier                 = "${var.project_name}-aurora-reader-${count.index + 1}"
+  cluster_identifier         = aws_rds_cluster.this.id
+  instance_class             = "db.serverless"
+  engine                     = aws_rds_cluster.this.engine
+  engine_version             = aws_rds_cluster.this.engine_version
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
   publicly_accessible        = false
 
