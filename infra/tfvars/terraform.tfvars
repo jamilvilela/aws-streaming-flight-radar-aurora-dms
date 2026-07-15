@@ -31,7 +31,7 @@ aurora_config = {
 
   backup_retention_days      = 7
   publicly_accessible        = true
-  snapshot_identifier        = "flight-radar-stream-final-snapshot-20260713"
+  snapshot_identifier        = null
   skip_final_snapshot        = false
   final_snapshot_identifier  = null
   deletion_protection        = false
