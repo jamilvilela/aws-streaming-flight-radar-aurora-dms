@@ -1,6 +1,6 @@
 #!/bin/bash
 # setup-env.sh - Load environment variables, deploy Terraform for
-# Aurora Serverless v2 PostgreSQL and AWS Batch, then verify
+# Aurora Serverless v2 PostgreSQL, then verify
 # every resource and dump connection info.
 #
 # Usage:   ./setup-env.sh
@@ -69,10 +69,10 @@ if [ -n "$AWS_REGION" ]; then
   export TF_VAR_aws_region="$AWS_REGION"
 fi
 
-if [ -n "$RDS_ADMIN_PASSWORD" ]; then
-  export TF_VAR_rds_admin_password="$RDS_ADMIN_PASSWORD"
-  export TF_VAR_rds_admin_username="$RDS_ADMIN_USERNAME"
-  ok "RDS_ADMIN_PASSWORD carregada do .env (sobrescreve tfvars)"
+if [ -n "$DB_PASSWORD" ]; then
+  export TF_VAR_rds_admin_password="$DB_PASSWORD"
+  export TF_VAR_rds_admin_username="$DB_USER"
+  ok "Credenciais DB_USER/DB_PASSWORD carregadas do .env (sobrescrevem tfvars)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -290,7 +290,7 @@ echo -e "  ${BOLD}DB_HOST${NC}     = ${GREEN}${AURORA_ENDPOINT}${NC}"
 echo -e "  ${BOLD}DB_PORT${NC}     = ${GREEN}${AURORA_PORT}${NC}"
 echo -e "  ${BOLD}DB_NAME${NC}     = ${GREEN}${AURORA_DB}${NC}"
 echo -e "  ${BOLD}DB_USER${NC}     = ${GREEN}${AURORA_USER}${NC}"
-echo -e "  ${BOLD}DB_PASSWORD${NC} = ${YELLOW}(definido em RDS_ADMIN_PASSWORD no .env)${NC}"
+echo -e "  ${BOLD}DB_PASSWORD${NC} = ${YELLOW}(definido em DB_PASSWORD no .env)${NC}"
 echo ""
 echo -e "Adicione ao arquivo ${BOLD}.env${NC} na raiz do projeto:"
 echo "  DB_HOST='${AURORA_ENDPOINT}'"

@@ -1,36 +1,25 @@
 # aws-streaming-flight-radar-aurora-dms
 
-**Aurora Serverless v2 PostgreSQL + AWS Batch** — Infraestrutura de banco de dados relacional para dados de voos com schema `flight_radar` e jobs de carga de dados via AWS Batch.
+**Aurora Serverless v2 PostgreSQL** — Infraestrutura de banco de dados relacional para dados de voos com schema `flight_radar`.
 
-> ⚠️ O serviço **DMS Serverless** foi movido para o repositório separado: [aws-streaming-flight-radar-dms](https://github.com/...)
-
-## Serviços
+## Serviço
 
 | Serviço | Descrição |
 |---------|-----------|
 | **Aurora Serverless v2 PostgreSQL** | Banco relacional com schema `flight_radar` (tabelas: `aircraft`, `airports`, `airlines`, `flights`, `aircraft_positions`) |
-| **AWS Batch** | Jobs de carga de dados: `historical`, `stream`, `load-reference` |
 
 ## Estrutura
 
 ```
 infra/                     # Terraform
-├── main.tf                # Orquestração dos módulos
+├── main.tf                # Recursos Aurora Serverless v2
 ├── variables.tf           # Variáveis de entrada
 ├── outputs.tf             # Outputs do stack
 ├── providers.tf           # Provider AWS
-├── data.tf                # Data sources
+├── data.tf                # Data sources (VPC discovery)
 ├── locals.tf              # Locals
-├── tfvars/
-│   └── terraform.tfvars   # Valores das variáveis
-└── modules/
-    ├── aurora_postgres/   # Módulo Aurora Serverless v2
-    └── aws_batch/         # Módulo AWS Batch (carga de dados)
-
-app/
-├── seed_data/             # Geradores de dados (historical, stream, load-reference)
-├── data/                  # Dados de referência (CSVs)
-└── sql/                   # Schema SQL
+└── tfvars/
+    └── terraform.tfvars   # Valores das variáveis
 
 setup-env.sh               # Deploy automatizado (Terraform)
 rollback-setup.sh          # Destrói recursos (Terraform destroy)
@@ -41,7 +30,7 @@ rollback-setup.sh          # Destrói recursos (Terraform destroy)
 ```bash
 # 1. Configure .env
 cp .env.example .env
-# Edite .env com RDS_ADMIN_PASSWORD, AWS_REGION
+# Edite .env com DB_USER, DB_PASSWORD, AWS_REGION
 
 # 2. Configure tfvars
 # Edite infra/tfvars/terraform.tfvars
