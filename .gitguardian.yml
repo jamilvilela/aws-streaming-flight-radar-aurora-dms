@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GitGuardian configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Docs: https://docs.gitguardian.com/ggshield-docs/config/user-configuration
+
+version: 2
+
+# Increase entropy threshold to reduce false positives with Terraform
+# attribute references (like arn, id, etc.)
+verbose: false
+
+# Ignore specific paths that are known false positives
+paths-ignore:
+  - "infra/modules/dms_serverless/main.tf"
+  - "**/modules/**/*.tf"
+
+# Match specific detectors
+matches-ignore:
+  - name: "generic-high-entropy-secret"
+    match: "secrets_manager_access_role_arn"
+  - name: "generic-high-entropy-secret"
+    match: "aws_iam_role"
