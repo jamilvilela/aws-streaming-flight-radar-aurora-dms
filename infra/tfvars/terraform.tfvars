@@ -22,7 +22,7 @@ tags = {
 
 aurora_config = {
   allowed_cidr_blocks = ["0.0.0.0/0"]
-  db_name             = null   # null para casar com o snapshot (DatabaseName: None)
+  db_name             = "flightradar"   # DEVE casar com o cluster restaurado (DatabaseName: flightradar) — null causaria ForceNew (destruição!)
   admin_username      = ""
   admin_password      = "" # override via DB_PASSWORD in .env
 
@@ -33,7 +33,7 @@ aurora_config = {
   publicly_accessible        = true
   snapshot_identifier        = null
   skip_final_snapshot        = false
-  final_snapshot_identifier  = null
+  final_snapshot_identifier  = "flight-radar-stream-final-snapshot"  # fixo p/ evitar diff perpétuo (timestamp muda a cada plan)
   deletion_protection        = false
   log_retention_days         = 30
   create_log_group           = false

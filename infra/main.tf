@@ -53,7 +53,10 @@ resource "aws_rds_cluster" "this" {
   enabled_cloudwatch_logs_exports = ["postgresql"]
 
   lifecycle {
-    ignore_changes = [snapshot_identifier]
+    # snapshot_identifier: não forçar restore a cada apply
+    # db_subnet_group_name: cluster restaurado usa o default subnet group do VPC;
+    #   trocar forçaria ForceNew (destruição). Mantemos o subnet group atual.
+    ignore_changes = [snapshot_identifier, db_subnet_group_name]
   }
 
   tags = merge(var.tags, {
