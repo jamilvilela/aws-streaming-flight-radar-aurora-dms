@@ -1,8 +1,14 @@
+# =============================================================================
+# TEMPLATE — copie para terraform.tfvars e preencha com os valores do ambiente
+#   cp infra/tfvars/terraform.tfvars.example infra/tfvars/terraform.tfvars
+# NUNCA commite o terraform.tfvars real (contém dados sensíveis).
+# Segredos (senha do banco) devem ir via .env → TF_VAR_rds_admin_password.
+# =============================================================================
+
 aws_region   = "us-east-1"
 project_name = "flight-radar-stream"
 environment  = "production"
 vpc_name     = "default-vpc"
-
 
 tags = {
   Environment = "production"
@@ -10,19 +16,14 @@ tags = {
   ManagedBy   = "terraform"
 }
 
-
 # =============================================================================
 # Aurora Serverless v2 PostgreSQL Configuration
 # =============================================================================
-# NOTA: Aurora Serverless v2 usa engine_mode="provisioned" com
-# serverlessv2_scaling_configuration. O armazenamento é gerenciado
-# automaticamente pelo Aurora (não há allocated_storage).
-# A replicação lógica (pglogical) é configurada no cluster parameter group.
-# =============================================================================
-
 aurora_config = {
-  allowed_cidr_blocks = ["0.0.0.0/0"]
-  db_name             = "flightradar"   # DEVE casar com o cluster restaurado (DatabaseName: flightradar) — null causaria ForceNew (destruição!)
+  # SECURITY: restrito ao CIDR da VPC (descoberto via data source).
+  # NÃO usar 0.0.0.0/0 — expõe o PostgreSQL à internet.
+  allowed_cidr_blocks = []
+  db_name             = "flightradar"
   admin_username      = ""
   admin_password      = "" # override via DB_PASSWORD in .env
 
@@ -30,16 +31,13 @@ aurora_config = {
   serverless_max_capacity = 2
 
   backup_retention_days      = 7
-  publicly_accessible        = true
+  publicly_accessible        = false
   snapshot_identifier        = null
   skip_final_snapshot        = false
-  final_snapshot_identifier  = "flight-radar-stream-final-snapshot"  # fixo p/ evitar diff perpétuo (timestamp muda a cada plan)
+  final_snapshot_identifier  = "flight-radar-stream-final-snapshot"
   deletion_protection        = false
   log_retention_days         = 30
   create_log_group           = false
   reader_count               = 0
   auto_minor_version_upgrade = true
 }
-
-
-

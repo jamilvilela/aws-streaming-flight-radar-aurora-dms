@@ -38,7 +38,7 @@ variable "aurora_config" {
   type = object({
     vpc_id                     = optional(string, null)
     subnet_ids                 = optional(list(string), null)
-    allowed_cidr_blocks        = optional(list(string), ["0.0.0.0/0"])
+    allowed_cidr_blocks        = optional(list(string), [])  # deny-by-default; use o CIDR da VPC
     db_name                    = optional(string, "flightradar")
     admin_username             = optional(string, "dbadmin")
     admin_password             = optional(string, "")

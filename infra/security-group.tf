@@ -10,8 +10,10 @@ resource "aws_security_group" "aurora" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = var.aurora_config.allowed_cidr_blocks
-    description = "PostgreSQL access"
+    # Restringe o acesso ao CIDR da VPC (descoberto via data source).
+    # Se a VPC não for descoberta, usa allowed_cidr_blocks (deny-by-default).
+    cidr_blocks = local.effective_vpc_cidr != "" ? [local.effective_vpc_cidr] : var.aurora_config.allowed_cidr_blocks
+    description = "PostgreSQL access (restricted to VPC CIDR)"
   }
 
   egress {
